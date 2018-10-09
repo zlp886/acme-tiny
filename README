@@ -1,0 +1,41 @@
+#创建一个 RSA 私钥用于 Let's Encrypt 识别你的身份
+openssl genrsa 4096 > account.key
+
+#创建 RSA 私钥（兼容性好）
+openssl genrsa 4096 > domain.key
+
+#创建 ECC 私钥（部分老旧操作系统、浏览器不支持。优点是证书体积小）
+#secp256r1
+openssl ecparam -genkey -name secp256r1 | openssl ec -out domain.key
+
+#secp384r1
+openssl ecparam -genkey -name secp384r1 | openssl ec -out domain.key
+
+#使用交互方式创建 CSR
+openssl req -new -sha256 -key domain.key -out domain.csr
+
+#生成一个随机验证文件，再通过创建 CSR 时指定的域名访问，如果可以访问则表明你对这个域名有控制权
+mkdir /htdocs/yourdomain.com/challenges/
+
+#指定账户私钥、CSR 以及验证目录，执行脚本
+python acme_tiny.py --account-key ./account.key --csr ./domain.csr --acme-dir /htdocs/yourdomain.com/challenges/ > ./signed.crt
+
+#下载 Let's Encrypt 的中间证书
+wget -O - https://letsencrypt.org/certs/lets-encrypt-x3-cross-signed.pem > intermediate.pem
+
+#合并证书
+cat signed.crt intermediate.pem > chained.pem
+
+#为了后续能顺利启用 OCSP Stapling,可以不做
+wget -O - https://letsencrypt.org/certs/isrgrootx1.pem > root.pem
+
+#再把根证书和中间证书合在一起,可以不做
+cat intermediate.pem root.pem > full_chained.pem
+
+#自动更新 sh
+
+#!/bin/bash
+cd /youer_cert_dir/
+python acme_tiny.py --account-key account.key --csr domain.csr --acme-dir /htdocs/yourdomain.com/challenges/ > signed.crt || exit
+wget -O - https://letsencrypt.org/certs/lets-encrypt-x3-cross-signed.pem > intermediate.pem
+cat signed.crt intermediate.pem > chained.pem
