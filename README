@@ -11,8 +11,8 @@ openssl ecparam -genkey -name secp256r1 | openssl ec -out domain.key
 #secp384r1
 openssl ecparam -genkey -name secp384r1 | openssl ec -out domain.key
 
-#使用交互方式创建 CSR
-openssl req -new -sha256 -key domain.key -out domain.csr
+#创建 domain.csr
+openssl req -new -sha256 -key domain.key -subj "/" -reqexts SAN -config <(cat /etc/ssl/openssl.cnf <(printf "[SAN]\nsubjectAltName=DNS:yoursite.com,DNS:www.yoursite.com")) > domain.csr
 
 #生成一个随机验证文件，再通过创建 CSR 时指定的域名访问，如果可以访问则表明你对这个域名有控制权
 mkdir /htdocs/yourdomain.com/challenges/
